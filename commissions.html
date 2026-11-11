@@ -6,16 +6,197 @@
   <title>vanillasinful.net</title>
   <link rel="icon" type="image/png" href="images/iconVanilla.png">
 <link rel="stylesheet" type="text/css" href="css/stylesd.css">
+
+<style>
+  /* ---- Easy settings: change these numbers to taste ---- */
+  :root {
+    --thumb-height: 220px;      /* height of every image in the gallery */
+    --gallery-gap: 5px;         /* space around each image */
+    --popup-bg: #7a4f66;        /* popup background colour */
+    --popup-text: #ffffff;      /* popup text colour */
+  }
+
+  .gallery {
+    display: flex;
+    flex-wrap: wrap;            /* fills sideways first, then goes down */
+    gap: var(--gallery-gap);    /* the space between images, sideways and down */
+    padding: var(--gallery-gap);
+    padding-bottom: 90px;       /* keeps the last row clear of the Go Back button */
+  }
+  .gallery-item {
+    cursor: pointer;
+  }
+  .gallery-item img {
+    display: block;
+    height: var(--thumb-height);
+    width: auto;
+  }
+  /* the description and download link stay hidden in the gallery;
+     they only show up in the popup */
+  .gallery-item .item-description,
+  .gallery-item .item-download {
+    display: none;
+  }
+
+  /* ---- Popup ---- */
+  #popup {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    box-sizing: border-box;
+  }
+  #popup.open { display: flex; }
+  #popup-box {
+    position: relative;
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow: auto;
+    padding: 20px;
+    box-sizing: border-box;
+    background: var(--popup-bg);
+    color: var(--popup-text);
+  }
+  #popup-image {
+    max-width: 50vw;
+    max-height: 75vh;
+    flex-shrink: 0;
+  }
+  #popup-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+    min-width: 180px;
+  }
+  #popup-description { margin: 0; }
+  #popup-download {
+    display: inline-block;
+    padding: 8px 16px;
+    color: inherit;
+    border: 2px solid currentColor;
+    text-decoration: none;
+  }
+  #popup-download:hover { opacity: 0.8; }
+  #popup-close {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 24px;
+    cursor: pointer;
+  }
+  /* on narrow screens (phones) the image goes on top of the description */
+  @media (max-width: 600px) {
+    #popup-box { flex-direction: column; }
+    #popup-image { max-width: 100%; max-height: 50vh; }
+  }
+</style>
 </head>
 <body class="index-body">
 
-    <div class="intro-text">
-        <h1>This section does not exist, yet. Sorry!</h1>
+<!--
+  ============================================================
+  HOW TO ADD A COMMISSION
+  Copy one whole block from <div class="gallery-item"> down to
+  its closing </div>, paste it below the last one (inside the
+  gallery), then change the 3 things:
+    1. img src      -> the picture shown in the gallery
+    2. description  -> the text shown in the popup
+    3. download href -> the file people download
+  ============================================================
+-->
+
+<div class="gallery">
+
+  <div class="gallery-item">
+    <img src="images/commission1.png" alt="">
+    <div class="item-description">Description goes here.</div>
+    <a class="item-download" href="models/commission1.zip" download>Download</a>
+  </div>
+
+  <div class="gallery-item">
+    <img src="images/commission2.png" alt="">
+    <div class="item-description">Description goes here.</div>
+    <a class="item-download" href="models/commission2.zip" download>Download</a>
+  </div>
+
+  <div class="gallery-item">
+    <img src="images/commission3.png" alt="">
+    <div class="item-description">Description goes here.</div>
+    <a class="item-download" href="models/commission3.zip" download>Download</a>
+  </div>
+
+  <!-- paste new blocks above this line -->
+
+</div>
+
+<!-- The popup (you don't need to touch this) -->
+<div id="popup">
+  <div id="popup-box">
+    <button id="popup-close" aria-label="Close">&times;</button>
+    <img id="popup-image" alt="">
+    <div id="popup-side">
+      <p id="popup-description"></p>
+      <a id="popup-download" download>Download</a>
     </div>
+  </div>
+</div>
 
 <nav class="bottom-nav">
     <a href="home.html" class="nav-button">Go Back</a>
 </nav>
+
+<script>
+  var popup = document.getElementById("popup");
+  var popupImage = document.getElementById("popup-image");
+  var popupDescription = document.getElementById("popup-description");
+  var popupDownload = document.getElementById("popup-download");
+
+  function openPopup(item) {
+    var img = item.querySelector("img");
+    var desc = item.querySelector(".item-description");
+    var dl = item.querySelector(".item-download");
+
+    popupImage.src = img.src;
+    popupImage.alt = img.alt;
+    popupDescription.innerHTML = desc ? desc.innerHTML : "";
+    if (dl && dl.getAttribute("href")) {
+      popupDownload.href = dl.getAttribute("href");
+      popupDownload.style.display = "";
+    } else {
+      popupDownload.style.display = "none";
+    }
+    popup.classList.add("open");
+  }
+
+  function closePopup() {
+    popup.classList.remove("open");
+  }
+
+  document.querySelectorAll(".gallery-item").forEach(function (item) {
+    item.tabIndex = 0;
+    item.setAttribute("role", "button");
+    item.addEventListener("click", function () { openPopup(item); });
+    item.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPopup(item); }
+    });
+  });
+
+  // close: X button, clicking the dark area outside the box, or Escape
+  document.getElementById("popup-close").addEventListener("click", closePopup);
+  popup.addEventListener("click", function (e) { if (e.target === popup) closePopup(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closePopup(); });
+</script>
 
 </body>
 </html>
