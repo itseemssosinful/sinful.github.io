@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Profile</title>
+</head>
+<body>
+
+<div id="top-right"></div>
+
+<p><a href="index.html">&larr; Back to blog</a></p>
+<h1>My profile</h1>
+
+<h2>Profile picture</h2>
+<p>
+  <img id="avatar-preview" width="96" height="96" alt=""
+       style="border-radius:50%;object-fit:cover">
+</p>
+<p>
+  <input type="file" id="avatar-file" accept="image/*">
+  <button id="avatar-remove">Remove picture</button>
+</p>
+
+<h2>Details</h2>
+<p><label>Username <input type="text" id="username" maxlength="30"></label></p>
+<p><label>Display name <input type="text" id="displayName" maxlength="50"></label></p>
+<p><label>Email <input type="email" id="email" maxlength="254"></label></p>
+<button id="save-btn">Save changes</button>
+<p id="save-message"></p>
+
+<hr>
+
+<h2>Delete account</h2>
+<p>This permanently deletes your account. It cannot be undone.</p>
+<p><label>Confirm your password <input type="password" id="delete-password" autocomplete="current-password"></label></p>
+<button id="delete-btn">Delete my account</button>
+<p id="delete-message"></p>
+
+<script src="common.js"></script>
+<script>
+var me = null;
+var avatarData = "";
+
+function el(id) { return document.getElementById(id); }
+
+function fill(user) {
+  me = user;
+  avatarData = user.avatar || "";
+  el("avatar-preview").src = avatarData || DEFAULT_AVATAR;
+  el("username").value = user.username;
+  el("displayName").value = user.displayName;
+  el("email").value = user.email;
+  renderHeader(user);
+}
+
+// Crop to a centred square and shrink to 128x128 so it stays small.
+el("avatar-file").onchange = function () {
+  var file = el("avatar-file").files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function () {
+    var img = new Image();
+    img.onload = function () {
+      var size = Math.min(img.width, img.height);
+      var canvas = document.createElement("canvas");
+      canvas.width = 128;
+      canvas.height = 128;
+      canvas.getContext("2d").drawImage(
+        img, (img.width - size) / 2, (img.height - size) / 2, size, size, 0, 0, 128, 128
+      );
+      avatarData = canvas.toDataURL("image/jpeg", 0.85);
+      el("avatar-preview").src = avatarData;
+      el("save-message").textContent = "Picture chosen. Press Save changes to keep it.";
+    };
+    img.onerror = function () { el("save-message").textContent = "Couldn't read that image."; };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+el("avatar-remove").onclick = function () {
+  avatarData = "";
+  el("avatar-file").value = "";
+  el("avatar-preview").src = DEFAULT_AVATAR;
+  el("save-message").textContent = "Picture removed. Press Save changes to keep that.";
+};
+
+el("save-btn").onclick = function () {
+  api("PUT", "/api/profile", {
+    username: el("username").value.trim(),
+    displayName: el("displayName").value,
+    email: el("email").value,
+    avatar: avatarData
+  })
+    .then(function (d) {
+      fill(d.user);
+      el("save-message").textContent = "Saved.";
+    })
+    .catch(function (e) { el("save-message").textContent = e.message; });
+};
+
+el("delete-btn").onclick = function () {
+  var msg = "Delete your account for good?" +
+    (me && me.owner ? "\n\nYou are the site owner. After this, nobody will be the owner and the next person to sign up will become the owner." : "");
+  if (!confirm(msg)) return;
+  api("DELETE", "/api/account", { password: el("delete-password").value })
+    .then(function () { location.href = "index.html"; })
+    .catch(function (e) { el("delete-message").textContent = e.message; });
+};
+
+getMe().then(function (user) {
+  if (!user) { location.href = "index.html"; return; }
+  fill(user);
+});
+</script>
+
+</body>
+</html>

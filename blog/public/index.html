@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Blog</title>
+</head>
+<body>
+
+<div id="top-right"></div>
+
+<h1>My Blog</h1>
+
+<p id="server-message"></p>
+
+<div id="logged-out">
+  <button id="login-btn">Login / Sign up</button>
+
+  <div id="auth-form" hidden>
+    <h2 id="form-title">Login</h2>
+    <p><label>Username <input type="text" id="username" autocomplete="username"></label></p>
+    <p><label>Password <input type="password" id="password" autocomplete="current-password"></label></p>
+    <button id="submit-auth">Login</button>
+    <button id="toggle-mode">Need an account? Sign up</button>
+    <button id="cancel-auth">Cancel</button>
+    <p id="auth-message"></p>
+  </div>
+</div>
+
+<hr>
+
+<div id="owner-panel" hidden>
+  <h2>Post a blog update (owner only)</h2>
+  <p><input type="text" id="post-title" placeholder="Title" size="40" maxlength="200"></p>
+  <p><textarea id="post-body" rows="6" cols="60" placeholder="Write your update..."></textarea></p>
+  <button id="publish-btn">Publish update</button>
+  <p id="publish-message"></p>
+  <hr>
+</div>
+
+<h2>
+  Blog updates
+  <span id="subscribe-box" hidden>
+    <label>
+      <input type="checkbox" id="subscribe-check">
+      &#10003; Email me updates
+    </label>
+  </span>
+</h2>
+<p id="subscribe-message"></p>
+<div id="posts"></div>
+
+<script src="common.js"></script>
+<script>
+var me = null;
+var mode = "login";
+
+function el(id) { return document.getElementById(id); }
+
+function applyUser(user) {
+  me = user;
+  renderHeader(user);
+  el("logged-out").hidden = !!user;
+  el("owner-panel").hidden = !(user && user.owner);
+  el("subscribe-box").hidden = !user;
+  el("subscribe-check").checked = !!(user && user.subscribed);
+}
+
+function renderPosts(posts) {
+  var c = el("posts");
+  c.innerHTML = "";
+  if (!posts.length) { c.textContent = "No updates yet."; return; }
+  posts.forEach(function (p) {
+    var wrap = document.createElement("div");
+    var h = document.createElement("h3");
+    h.textContent = p.title;
+    var meta = document.createElement("small");
+    meta.textContent = "Posted " + new Date(p.date).toLocaleString() + " by " + p.author;
+    var body = document.createElement("p");
+    body.style.whiteSpace = "pre-wrap";
+    body.textContent = p.body;
+    wrap.appendChild(h);
+    wrap.appendChild(meta);
+    wrap.appendChild(body);
+    wrap.appendChild(document.createElement("hr"));
+    c.appendChild(wrap);
+  });
+}
+
+function loadPosts() {
+  return api("GET", "/api/posts").then(function (d) { renderPosts(d.posts); });
+}
+
+function setMode(m) {
+  mode = m;
+  el("form-title").textContent = m === "login" ? "Login" : "Sign up";
+  el("submit-auth").textContent = m === "login" ? "Login" : "Create account";
+  el("toggle-mode").textContent = m === "login" ? "Need an account? Sign up" : "Have an account? Login";
+  el("auth-message").textContent = "";
+}
+
+el("login-btn").onclick = function () { el("auth-form").hidden = false; setMode("login"); };
+el("cancel-auth").onclick = function () { el("auth-form").hidden = true; };
+el("toggle-mode").onclick = function () { setMode(mode === "login" ? "signup" : "login"); };
+
+el("submit-auth").onclick = function () {
+  var url = mode === "login" ? "/api/login" : "/api/signup";
+  api("POST", url, { username: el("username").value.trim(), password: el("password").value })
+    .then(function (d) {
+      el("username").value = "";
+      el("password").value = "";
+      el("auth-form").hidden = true;
+      applyUser(d.user);
+    })
+    .catch(function (e) { el("auth-message").textContent = e.message; });
+};
+
+el("publish-btn").onclick = function () {
+  el("publish-message").textContent = "";
+  api("POST", "/api/posts", { title: el("post-title").value, body: el("post-body").value })
+    .then(function (d) {
+      el("post-title").value = "";
+      el("post-body").value = "";
+      el("publish-message").textContent =
+        "Published." + (d.emailed ? " Emailing " + d.emailed + " subscriber(s)." : "");
+      return loadPosts();
+    })
+    .catch(function (e) { el("publish-message").textContent = e.message; });
+};
+
+el("subscribe-check").onchange = function () {
+  var box = el("subscribe-check");
+  el("subscribe-message").textContent = "";
+  api("POST", "/api/subscribe", { subscribed: box.checked })
+    .then(function (d) {
+      me = d.user;
+      el("subscribe-message").textContent = d.user.subscribed
+        ? "You'll be emailed at " + d.user.email + " when there's a new update."
+        : "Email updates turned off.";
+    })
+    .catch(function (e) {
+      box.checked = !box.checked;
+      el("subscribe-message").textContent = e.message;
+    });
+};
+
+function serverDown() {
+  el("server-message").textContent =
+    "Can't reach the blog server. Start it with 'npm start' and open http://localhost:3000 " +
+    "(opening this file directly won't work).";
+}
+
+getMe().then(applyUser).catch(function () {
+  applyUser(null);
+  serverDown();
+});
+loadPosts().catch(function () {
+  el("posts").textContent = "Couldn't load updates.";
+  serverDown();
+});
+</script>
+
+</body>
+</html>

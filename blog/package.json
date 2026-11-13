@@ -1,0 +1,14 @@
+{
+  "name": "simple-blog",
+  "version": "1.0.0",
+  "description": "A simple blog with owner-only posting, profiles and email subscriptions",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "nodemailer": "^6.9.14"
+  }
+}
